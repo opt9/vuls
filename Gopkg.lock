@@ -270,9 +270,21 @@
   packages = ["collate","collate/build","internal/colltab","internal/gen","internal/tag","internal/triegen","internal/ucd","language","secure/bidirule","transform","unicode/bidi","unicode/cldr","unicode/norm","unicode/rangetable"]
   revision = "1cbadb444a806fd9430d14ad08967ed91da4fa0a"
 
+[[projects]]
+  branch = "v3"
+  name = "gopkg.in/alexcesaro/quotedprintable.v3"
+  packages = ["."]
+  revision = "2caba252f4dc53eaf6b553000885530023f54623"
+
+[[projects]]
+  name = "gopkg.in/gomail.v2"
+  packages = ["."]
+  revision = "41f3572897373c5538c50a2402db15db079fa4fd"
+  version = "2.0.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a0cf09ec0aec110a8743e9c6085f35052dcb9f1c5c9174efd89f179f5df64dfc"
+  inputs-digest = "f3ec6da3504b02a3eb8b5e010c3b50ecaf6aa4f64c7f97eeaa84ead06bd43390"
   solver-name = "gps-cdcl"
   solver-version = 1

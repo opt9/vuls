@@ -23,8 +23,11 @@ import (
 	"net"
 	"net/mail"
 	"net/smtp"
+	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/gomail.v2"
 
 	"github.com/future-architect/vuls/config"
 	"github.com/future-architect/vuls/models"
@@ -100,7 +103,6 @@ type EMailSender interface {
 
 type emailSender struct {
 	conf config.SMTPConf
-	send func(string, smtp.Auth, string, []string, []byte) error
 }
 
 func (e *emailSender) Send(subject, body string) (err error) {
@@ -127,7 +129,7 @@ func (e *emailSender) Send(subject, body string) (err error) {
 	message := fmt.Sprintf("%s\r\n%s", header, body)
 
 	smtpServer := net.JoinHostPort(emailConf.SMTPAddr, emailConf.SMTPPort)
-	err = e.send(
+	err = smtp.SendMail(
 		smtpServer,
 		smtp.PlainAuth(
 			"",
@@ -148,51 +150,35 @@ func (e *emailSender) Send(subject, body string) (err error) {
 // NewEMailSender creates emailSender
 func NewEMailSender() EMailSender {
 	// return &emailSender{config.Conf.EMail, smtp.SendMail}
-	return &emailSender{config.Conf.EMail, (&emailSender{}).sendMailInsecure}
+	// return &emailSender{config.Conf.EMail}
+	return &gomailSender{config.Conf.EMail}
 }
 
-func (e *emailSender) sendMailInsecure(addr string, a smtp.Auth, from string, to []string, msg []byte) error {
-	c, err := smtp.Dial(addr)
-	if err != nil {
-		return err
-	}
-	defer c.Close()
-	if err = c.Hello("localhost"); err != nil {
-		return err
-	}
-	if ok, _ := c.Extension("STARTTLS"); ok {
-		config := &tls.Config{
-			ServerName:         e.conf.SMTPAddr,
-			InsecureSkipVerify: true,
-		}
-		if err = c.StartTLS(config); err != nil {
-			return err
-		}
-	}
+type gomailSender struct {
+	conf config.SMTPConf
+}
 
-	if err = c.Auth(a); err != nil {
-		return err
-	}
+func (e *gomailSender) Send(subject, body string) (err error) {
+	m := gomail.NewMessage()
+	m.SetHeader("From", e.conf.From)
+	m.SetHeader("To", e.conf.To...)
+	//TODO
+	// m.SetHeader("Cc", e.conf.Cc...)
+	m.SetHeader("Subject", subject)
+	m.SetBody("text/plain", body)
+	port, _ := strconv.Atoi(e.conf.SMTPPort)
+	d := gomail.NewPlainDialer(
+		e.conf.SMTPAddr,
+		port,
+		e.conf.User,
+		e.conf.Password,
+	)
 
-	if err = c.Mail(from); err != nil {
+	d.TLSConfig = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+	if err := d.DialAndSend(m); err != nil {
 		return err
 	}
-	for _, addr := range to {
-		if err = c.Rcpt(addr); err != nil {
-			return err
-		}
-	}
-	w, err := c.Data()
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(msg)
-	if err != nil {
-		return err
-	}
-	err = w.Close()
-	if err != nil {
-		return err
-	}
-	return c.Quit()
+	return nil
 }
